@@ -1,0 +1,61 @@
+name: Seguridad
+
+# Workflow reutilizable: se consume desde otro repositorio con
+#   jobs:
+#     seguridad:
+#       uses: JesquivelR/pipeline-seguridad-reutilizable/.github/workflows/seguridad.yml@main
+#       with:
+#         lenguaje: java
+#         ruta: .
+
+on:
+  workflow_call:
+    inputs:
+      lenguaje:
+        description: "Lenguaje principal del proyecto (java, node, python, go, terraform)"
+        type: string
+        default: "java"
+      ruta:
+        description: "Ruta del proyecto dentro del repositorio"
+        type: string
+        default: "."
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: Escaneo de secretos (gitleaks)
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: "8.21.2"
+      GITLEAKS_SHA256: "5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba"
+    steps:
+      - name: Descargar el codigo con todo el historial
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Instalar gitleaks verificando el checksum
+        run: |
+          curl -sSfL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          sudo install gitleaks /usr/local/bin/gitleaks
+
+      - name: Buscar secretos en el historial
+        env:
+          RUTA: ${{ inputs.ruta }}
+        run: |
+          gitleaks detect --source "${RUTA}" --redact --verbose --exit-code 1 \
+            --report-format sarif --report-path gitleaks.sarif
+
+      - name: Guardar el reporte
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gitleaks-sarif
+          path: gitleaks.sarif
+          if-no-files-found: ignore
