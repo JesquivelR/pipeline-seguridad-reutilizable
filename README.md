@@ -85,6 +85,23 @@ Notas:
 3. Descarga los artefactos del run para ver los reportes completos.
 4. Para comprobar que corta, agrega una dependencia con un CVE conocido y confirma que `dependency-check` falla con el umbral configurado.
 
+## Rama de demostración con una dependencia vulnerable
+
+La rama `demo/dependencia-vulnerable` parte de `main` y cambia una sola cosa en `ejemplos/node-api`: agrega `lodash` en la versión 4.17.15, que tiene CVE conocidos con CVSS por encima de 7 (por ejemplo CVE-2020-8203 y CVE-2021-23337). Con el umbral en `7`, el job `dependency-check` del workflow `Ejemplos` debe fallar y Trivy en modo filesystem debe listar los mismos hallazgos.
+
+Esta rama nunca se fusiona a `main`. Existe para mostrar que el pipeline corta cuando aparece una dependencia con una vulnerabilidad alta.
+
+Para reproducirlo en local:
+
+```bash
+git switch demo/dependencia-vulnerable
+cd ejemplos/node-api
+npm ci
+npm audit --audit-level=high
+```
+
+Para ver el corte en CI, abre un pull request de esa rama hacia `main` sin fusionarlo, o lanza `Ejemplos` con `workflow_dispatch` sobre la rama, y revisa el job `dependency-check` y la pestaña Security.
+
 ## Validación local de los workflows
 
 ```bash
