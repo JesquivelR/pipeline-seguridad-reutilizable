@@ -1,5 +1,8 @@
 # Pipeline de seguridad reutilizable
 
+[![Ejemplos](https://github.com/JesquivelR/pipeline-seguridad-reutilizable/actions/workflows/ejemplos.yml/badge.svg?branch=main)](https://github.com/JesquivelR/pipeline-seguridad-reutilizable/actions/workflows/ejemplos.yml)
+[![Seguridad](https://github.com/JesquivelR/pipeline-seguridad-reutilizable/actions/workflows/seguridad.yml/badge.svg?branch=main)](https://github.com/JesquivelR/pipeline-seguridad-reutilizable/actions/workflows/seguridad.yml)
+
 Workflow reutilizable de GitHub Actions que revisa un proyecto en cuatro frentes: secretos, código, dependencias e infraestructura como código. Se escribe una vez aquí y se consume desde cualquier otro repositorio con unas pocas líneas.
 
 En este avance están los cuatro jobs de análisis. SBOM, escaneo de imágenes y firma quedan para una etapa posterior.
