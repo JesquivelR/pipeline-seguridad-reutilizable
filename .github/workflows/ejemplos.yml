@@ -1,0 +1,40 @@
+name: Ejemplos
+
+# Llama al workflow reutilizable una vez por cada aplicacion de ejemplo.
+# Sirve como prueba de que el pipeline se puede consumir tal como lo
+# haria otro repositorio.
+
+on:
+  pull_request:
+    paths:
+      - "ejemplos/**"
+      - ".github/workflows/seguridad.yml"
+      - ".github/workflows/ejemplos.yml"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  java-api:
+    name: Seguridad en ejemplos/java-api
+    uses: ./.github/workflows/seguridad.yml
+    with:
+      lenguaje: java
+      ruta: ejemplos/java-api
+      umbral-cvss: "7"
+    secrets:
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+  node-api:
+    name: Seguridad en ejemplos/node-api
+    uses: ./.github/workflows/seguridad.yml
+    with:
+      lenguaje: node
+      ruta: ejemplos/node-api
+      umbral-cvss: "7"
+    secrets:
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
