@@ -1,0 +1,12 @@
+// Jenkinsfile de ejemplo: consume la shared library de jenkins/ de este repositorio.
+// La libreria se registra en Jenkins con el nombre "seguridad-pipeline"
+// (ver jenkins/local/casc/jenkins.yaml para el entorno local).
+@Library('seguridad-pipeline') _
+
+seguridadPipeline(
+    lenguaje: 'java',
+    ruta: 'ejemplos/java-api',
+    umbralCvss: '7',
+    sonarServidor: 'sonarqube',
+    imagen: 'java-api-demo:local'
+)

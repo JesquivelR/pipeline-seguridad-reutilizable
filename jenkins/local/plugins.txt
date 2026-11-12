@@ -1,0 +1,8 @@
+configuration-as-code
+workflow-aggregator
+git
+pipeline-stage-view
+timestamps
+sonar
+dependency-check-jenkins-plugin
+job-dsl

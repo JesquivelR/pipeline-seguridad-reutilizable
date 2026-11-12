@@ -1,0 +1,46 @@
+jenkins:
+  systemMessage: "Jenkins local para probar la shared library de seguridad"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  globalLibraries:
+    libraries:
+      - name: "seguridad-pipeline"
+        defaultVersion: "main"
+        retriever:
+          modernSCM:
+            scm:
+              git:
+                remote: "${REPO_URL}"
+        # La libreria vive en la subcarpeta jenkins/ del repositorio
+        implicit: false
+  sonarGlobalConfiguration:
+    installations:
+      - name: "sonarqube"
+        serverUrl: "${SONAR_URL}"
+        credentialsId: ""
+
+jobs:
+  - script: >
+      pipelineJob('java-api-seguridad') {
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url(System.getenv('REPO_URL')) }
+                branches('*/main')
+              }
+            }
+            scriptPath('ejemplos/java-api/Jenkinsfile')
+          }
+        }
+      }
