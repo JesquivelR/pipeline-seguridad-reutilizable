@@ -116,7 +116,8 @@ jobs:
             --sarif --output semgrep.sarif "${RUTA}"
 
       - name: Subir el resultado a la pestana Security
-        if: always() && hashFiles('semgrep.sarif') != ''
+        # Code scanning solo esta disponible en repos publicos (o con GHAS).
+        if: always() && hashFiles('semgrep.sarif') != '' && !github.event.repository.private
         uses: github/codeql-action/upload-sarif@9e8d0789d4a0fa9ceb6b1738f7e269594bdd67f0 # v3.28.9
         with:
           sarif_file: semgrep.sarif
