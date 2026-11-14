@@ -1,0 +1,28 @@
+# Jenkins local para probar la shared library. Solo para laboratorio:
+# monta el socket de Docker y usa credenciales de ejemplo.
+services:
+  jenkins:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?define JENKINS_ADMIN_PASSWORD en .env}
+      REPO_URL: ${REPO_URL:-https://github.com/JesquivelR/pipeline-seguridad-reutilizable.git}
+      SONAR_URL: http://sonarqube:9000
+      SONAR_TOKEN: ${SONAR_TOKEN:-}
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - sonarqube
+
+  sonarqube:
+    image: sonarqube:10.6.0-community
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+
+volumes:
+  jenkins_home:
+  sonar_data:

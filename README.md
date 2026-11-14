@@ -102,6 +102,65 @@ npm audit --audit-level=high
 
 Para ver el corte en CI, abre un pull request de esa rama hacia `main` sin fusionarlo, o lanza `Ejemplos` con `workflow_dispatch` sobre la rama, y revisa el job `dependency-check` y la pestaña Security.
 
+## Versión para Jenkins (shared library)
+
+La carpeta `jenkins/` contiene la misma revisión como shared library de Jenkins: el paso `seguridadPipeline` ejecuta las etapas en secuencia dentro de un solo pipeline declarativo.
+
+```
+jenkins/
+  vars/seguridadPipeline.groovy    paso que consume el Jenkinsfile
+  src/seguridad/Lenguajes.groovy   reglas y manifiesto por lenguaje
+  resources/seguridad/             recursos de la librería
+  local/                           Jenkins con Docker Compose y JCasC para probarla
+```
+
+### Registrar la librería en Jenkins
+
+1. En Manage Jenkins > System > Global Pipeline Libraries, agrega una librería con el nombre `seguridad-pipeline`.
+2. Elige Modern SCM con Git y la URL de este repositorio. Como la librería vive en `jenkins/` y no en la raíz, indica `jenkins` en el campo Library Path.
+3. Fija una versión por defecto (rama, etiqueta o SHA). Para producción conviene una etiqueta y no `main`.
+4. Instala los plugins `workflow-aggregator` (incluye Pipeline Groovy Libraries), `git`, `timestamps`, `sonar` y `dependency-check-jenkins-plugin`. La lista usada en local está en `jenkins/local/plugins.txt`.
+5. Configura un servidor SonarQube con el nombre `sonarqube` y una instalación de Dependency-Check con el nombre `dependency-check`.
+6. El agente necesita Docker para gitleaks y Trivy, y `sonar-scanner` en el PATH.
+
+En el Jenkinsfile del proyecto:
+
+```groovy
+@Library('seguridad-pipeline') _
+
+seguridadPipeline(
+    lenguaje: 'java',
+    ruta: 'ejemplos/java-api',
+    umbralCvss: '7',
+    sonarServidor: 'sonarqube',
+    imagen: 'java-api-demo:local'
+)
+```
+
+Todos los parámetros son opcionales. Si se omite `imagen`, solo se escanea el filesystem.
+
+### Probarlo en local
+
+```bash
+cd jenkins/local
+echo "JENKINS_ADMIN_PASSWORD=cambia-esto" > .env
+docker compose up -d --build
+```
+
+Jenkins queda en `http://localhost:8080` (usuario `admin`) y SonarQube en `http://localhost:9000`. JCasC crea el job `java-api-seguridad`, que usa `ejemplos/java-api/Jenkinsfile`. Es un entorno de laboratorio: monta el socket de Docker y no debe exponerse a una red compartida. La imagen local trae Docker, pero no `sonar-scanner` ni una instalación de Dependency-Check: agrégalas en Manage Jenkins > Tools (o en el Dockerfile) antes de ejecutar el job completo, y crea un token en SonarQube para `SONAR_TOKEN`.
+
+### Equivalencia con el workflow de GitHub Actions
+
+| Etapa de Jenkins | Job de GitHub Actions | Diferencias |
+|------------------|-----------------------|-------------|
+| Gitleaks | `gitleaks` | Mismo escaneo del historial; el reporte SARIF se archiva como artefacto del build. |
+| SonarQube y Quality gate | `semgrep` | Ambos son análisis estático del código. Jenkins usa SonarQube y corta con `waitForQualityGate abortPipeline: true`; Actions usa Semgrep con reglas por lenguaje. |
+| OWASP Dependency-Check | `dependency-check` | El umbral `umbralCvss` equivale a `umbral-cvss` y se pasa como `--failOnCVSS`. Jenkins usa el plugin; Actions descarga el binario con checksum y cachea la base NVD. |
+| Trivy filesystem | `trivy` (modo fs) | Ambos cortan en HIGH y CRITICAL. |
+| Trivy imagen | no existe todavía | Se activa al pasar `imagen`; el escaneo de imágenes llegará al workflow con la cadena de suministro. |
+
+El modo `config` de Trivy (Terraform, Kubernetes y Dockerfile) solo está en el workflow de Actions.
+
 ## Validación local de los workflows
 
 ```bash
