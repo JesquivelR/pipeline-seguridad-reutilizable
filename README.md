@@ -74,7 +74,7 @@ jobs:
 
 Notas:
 
-- El job `semgrep` sube SARIF a la pestaña Security, así que el workflow que llama debe conceder `security-events: write`. En un repositorio privado hace falta tener habilitado Code Security.
+- El job `semgrep` sube SARIF a la pestaña Security, así que el workflow que llama debe conceder `security-events: write`. La subida solo se ejecuta cuando el repositorio es público: en uno privado se omite (code scanning no está disponible) y el SARIF queda igualmente como artefacto `semgrep-sarif`. La pestaña Security se llena cuando el repositorio es público.
 - Para fijar una versión estable en lugar de `@main`, usa una etiqueta o el SHA de un commit.
 - Si el repositorio que llama es privado, este repositorio debe permitir el acceso a sus workflows en Settings > Actions > General.
 
