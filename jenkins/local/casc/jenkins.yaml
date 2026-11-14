@@ -18,10 +18,11 @@ unclassified:
         defaultVersion: "main"
         retriever:
           modernSCM:
+            libraryPath: "jenkins"
             scm:
               git:
                 remote: "${REPO_URL}"
-        # La libreria vive en la subcarpeta jenkins/ del repositorio
+        # La libreria vive en la subcarpeta jenkins/ del repositorio (libraryPath)
         implicit: false
   sonarGlobalConfiguration:
     installations:
