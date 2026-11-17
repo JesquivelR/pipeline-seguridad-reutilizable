@@ -10,6 +10,7 @@ on:
       - "ejemplos/**"
       - ".github/workflows/seguridad.yml"
       - ".github/workflows/ejemplos.yml"
+      - ".github/workflows/cadena-suministro.yml"
   push:
     branches: [main]
   workflow_dispatch:
@@ -38,3 +39,17 @@ jobs:
       umbral-cvss: "7"
     secrets:
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+  sbom-java-api:
+    name: Imagen y SBOM de java-api
+    uses: ./.github/workflows/cadena-suministro.yml
+    with:
+      ruta: ejemplos/java-api
+      imagen: java-api
+
+  sbom-node-api:
+    name: Imagen y SBOM de node-api
+    uses: ./.github/workflows/cadena-suministro.yml
+    with:
+      ruta: ejemplos/node-api
+      imagen: node-api
