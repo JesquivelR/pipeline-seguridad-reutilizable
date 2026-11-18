@@ -183,6 +183,16 @@ cosign verify-attestation --type spdxjson \
 
 Qué se comprueba: que la firma existe en el registro, que el certificado lo emitió Sigstore para esa identidad exacta y que el evento quedó en el registro de transparencia Rekor. Si la identidad no coincide (otro repo, otro workflow u otra rama), el comando falla con código distinto de cero.
 
+## Actualización de dependencias con Dependabot
+
+El archivo `.github/dependabot.yml` revisa cada semana:
+
+- las acciones de GitHub usadas en `.github/workflows` (agrupadas en un solo PR, y como están fijadas por versión, Dependabot propone el cambio de la versión);
+- las dependencias de `ejemplos/node-api` (npm) y `ejemplos/java-api` (Maven);
+- las imágenes base de los tres Dockerfile del repositorio.
+
+La rama `demo/dependencia-vulnerable` no se toca: sirve para mostrar que el pipeline detecta una dependencia con CVE.
+
 ## Validación local de los workflows
 
 ```bash

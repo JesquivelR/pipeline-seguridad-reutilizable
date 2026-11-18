@@ -1,0 +1,30 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      acciones:
+        patterns:
+          - "*"
+  - package-ecosystem: npm
+    directory: /ejemplos/node-api
+    schedule:
+      interval: weekly
+  - package-ecosystem: maven
+    directory: /ejemplos/java-api
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /ejemplos/node-api
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /ejemplos/java-api
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /jenkins/local
+    schedule:
+      interval: weekly
