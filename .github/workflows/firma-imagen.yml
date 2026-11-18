@@ -1,0 +1,105 @@
+name: Firma de imagen
+
+# Workflow reutilizable: construye la imagen, la publica en GHCR y la firma sin llaves
+# con Cosign (OIDC de GitHub). Tambien adjunta el SBOM como attestation firmada.
+# Se consume con:
+#   jobs:
+#     firma:
+#       permissions:
+#         contents: read
+#         packages: write
+#         id-token: write
+#       uses: JesquivelR/pipeline-seguridad-reutilizable/.github/workflows/firma-imagen.yml@main
+#       with:
+#         ruta: .
+#         imagen: mi-app
+
+on:
+  workflow_call:
+    inputs:
+      ruta:
+        description: "Carpeta con el Dockerfile (contexto de build)"
+        type: string
+        default: "."
+      imagen:
+        description: "Nombre de la imagen sin registro ni propietario"
+        type: string
+        required: true
+    outputs:
+      referencia:
+        description: "Imagen publicada con su digest (registro/propietario/nombre@sha256:...)"
+        value: ${{ jobs.firma.outputs.referencia }}
+
+permissions:
+  contents: read
+
+jobs:
+  firma:
+    name: Publicar, firmar y atestiguar el SBOM
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # publicar en GHCR
+      id-token: write # certificado efimero de Sigstore con el OIDC de GitHub
+    outputs:
+      referencia: ${{ steps.publicar.outputs.referencia }}
+    env:
+      COSIGN_VERSION: "2.4.1"
+      COSIGN_SHA256: "8b24b946dd5809c6bd93de08033bcf6bc0ed7d336b7785787c080f574b89249b"
+      SYFT_VERSION: "1.18.1"
+      SYFT_SHA256: "066c251652221e4d44fcc4d115ce3df33a91769da38c830a8533199db2f65aab"
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Instalar Cosign verificando el checksum
+        run: |
+          curl -sSfL -o cosign \
+            "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64"
+          echo "${COSIGN_SHA256}  cosign" | sha256sum -c -
+          sudo install cosign /usr/local/bin/cosign
+
+      - name: Instalar Syft verificando el checksum
+        run: |
+          curl -sSfL -o syft.tar.gz \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          echo "${SYFT_SHA256}  syft.tar.gz" | sha256sum -c -
+          tar -xzf syft.tar.gz syft
+          sudo install syft /usr/local/bin/syft
+
+      - name: Iniciar sesion en GHCR
+        env:
+          TOKEN: ${{ github.token }}
+          USUARIO: ${{ github.actor }}
+        run: echo "${TOKEN}" | docker login ghcr.io -u "${USUARIO}" --password-stdin
+
+      - name: Construir y publicar la imagen
+        id: publicar
+        env:
+          RUTA: ${{ inputs.ruta }}
+          IMAGEN: ${{ inputs.imagen }}
+          PROPIETARIO: ${{ github.repository_owner }}
+        run: |
+          base="ghcr.io/${PROPIETARIO,,}/${IMAGEN}"
+          docker build -t "${base}:${GITHUB_SHA}" "${RUTA}"
+          docker push "${base}:${GITHUB_SHA}"
+          digest=$(docker inspect --format '{{ index .RepoDigests 0 }}' "${base}:${GITHUB_SHA}")
+          echo "referencia=${digest}" >> "$GITHUB_OUTPUT"
+
+      # Se firma el digest, nunca la etiqueta, porque una etiqueta se puede mover.
+      - name: Firmar la imagen sin llaves
+        env:
+          REFERENCIA: ${{ steps.publicar.outputs.referencia }}
+        run: cosign sign --yes "${REFERENCIA}"
+
+      - name: Generar el SBOM de la imagen publicada
+        env:
+          REFERENCIA: ${{ steps.publicar.outputs.referencia }}
+        run: syft "${REFERENCIA}" -o spdx-json=sbom.spdx.json
+
+      - name: Adjuntar el SBOM como attestation firmada
+        env:
+          REFERENCIA: ${{ steps.publicar.outputs.referencia }}
+        run: cosign attest --yes --type spdxjson --predicate sbom.spdx.json "${REFERENCIA}"

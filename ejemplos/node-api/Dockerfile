@@ -7,6 +7,10 @@ RUN npm ci --omit=dev
 # Etapa de ejecucion: usuario sin privilegios
 FROM node:22-alpine
 ENV NODE_ENV=production
+# La aplicacion no necesita npm ni yarn en ejecucion: se quitan para reducir
+# la superficie de ataque y evitar CVE de las dependencias que traen incluidas.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+    /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 WORKDIR /app
 COPY --from=deps --chown=10001:10001 /app/node_modules ./node_modules
 COPY --chown=10001:10001 package.json ./

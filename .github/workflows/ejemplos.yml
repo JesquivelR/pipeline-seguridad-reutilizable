@@ -10,6 +10,9 @@ on:
       - "ejemplos/**"
       - ".github/workflows/seguridad.yml"
       - ".github/workflows/ejemplos.yml"
+      - ".github/workflows/cadena-suministro.yml"
+      - ".github/workflows/firma-imagen.yml"
+      - ".github/workflows/verificar-firma.yml"
   push:
     branches: [main]
   workflow_dispatch:
@@ -38,3 +41,44 @@ jobs:
       umbral-cvss: "7"
     secrets:
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+  sbom-java-api:
+    name: Imagen y SBOM de java-api
+    uses: ./.github/workflows/cadena-suministro.yml
+    with:
+      ruta: ejemplos/java-api
+      imagen: java-api
+
+  sbom-node-api:
+    name: Imagen y SBOM de node-api
+    uses: ./.github/workflows/cadena-suministro.yml
+    with:
+      ruta: ejemplos/node-api
+      imagen: node-api
+
+  # Solo en main: publica en GHCR y firma. En los PRs no se publica nada.
+  firma-node-api:
+    name: Firma de la imagen de node-api
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [sbom-node-api]
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/firma-imagen.yml
+    with:
+      ruta: ejemplos/node-api
+      imagen: node-api
+
+  # La identidad esperada es el workflow reutilizable que firma, en la ref desde la que se llamo.
+  verificar-node-api:
+    name: Verificacion de la firma de node-api
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [firma-node-api]
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/verificar-firma.yml
+    with:
+      referencia: ${{ needs.firma-node-api.outputs.referencia }}
+      identidad: https://github.com/${{ github.repository }}/.github/workflows/firma-imagen.yml@${{ github.ref }}
