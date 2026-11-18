@@ -12,6 +12,7 @@ on:
       - ".github/workflows/ejemplos.yml"
       - ".github/workflows/cadena-suministro.yml"
       - ".github/workflows/firma-imagen.yml"
+      - ".github/workflows/verificar-firma.yml"
   push:
     branches: [main]
   workflow_dispatch:
@@ -68,3 +69,16 @@ jobs:
     with:
       ruta: ejemplos/node-api
       imagen: node-api
+
+  # La identidad esperada es el workflow reutilizable que firma, en la ref desde la que se llamo.
+  verificar-node-api:
+    name: Verificacion de la firma de node-api
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [firma-node-api]
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/verificar-firma.yml
+    with:
+      referencia: ${{ needs.firma-node-api.outputs.referencia }}
+      identidad: https://github.com/${{ github.repository }}/.github/workflows/firma-imagen.yml@${{ github.ref }}

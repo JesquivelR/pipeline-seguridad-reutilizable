@@ -161,6 +161,28 @@ Jenkins queda en `http://localhost:8080` (usuario `admin`) y SonarQube en `http:
 
 El modo `config` de Trivy (Terraform, Kubernetes y Dockerfile) solo está en el workflow de Actions.
 
+## Verificar la firma de una imagen
+
+El workflow `firma-imagen.yml` firma el digest de la imagen sin llaves: Cosign pide a Sigstore un certificado efímero atado a la identidad OIDC del workflow que corre. Quien consume la imagen comprueba esa identidad, no una llave compartida.
+
+En CI, el job `verificar-node-api` de `ejemplos.yml` llama a `verificar-firma.yml` después de firmar (solo en `main`) con la referencia por digest que devuelve el job de firma.
+
+A mano, con Cosign 2.x instalado:
+
+```bash
+cosign verify \
+  --certificate-identity "https://github.com/JesquivelR/pipeline-seguridad-reutilizable/.github/workflows/firma-imagen.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  ghcr.io/jesquivelr/node-api@sha256:<digest>
+
+cosign verify-attestation --type spdxjson \
+  --certificate-identity "https://github.com/JesquivelR/pipeline-seguridad-reutilizable/.github/workflows/firma-imagen.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  ghcr.io/jesquivelr/node-api@sha256:<digest>
+```
+
+Qué se comprueba: que la firma existe en el registro, que el certificado lo emitió Sigstore para esa identidad exacta y que el evento quedó en el registro de transparencia Rekor. Si la identidad no coincide (otro repo, otro workflow u otra rama), el comando falla con código distinto de cero.
+
 ## Validación local de los workflows
 
 ```bash

@@ -1,0 +1,82 @@
+name: Verificacion de firma
+
+# Workflow reutilizable: comprueba con `cosign verify` que una imagen fue firmada sin llaves
+# por un workflow concreto de este repositorio, y que lleva la attestation del SBOM.
+# Se consume con:
+#   jobs:
+#     verificar:
+#       permissions:
+#         contents: read
+#         packages: read
+#       uses: JesquivelR/pipeline-seguridad-reutilizable/.github/workflows/verificar-firma.yml@main
+#       with:
+#         referencia: ghcr.io/propietario/mi-app@sha256:...
+#         identidad: https://github.com/propietario/mi-repo/.github/workflows/ci.yml@refs/heads/main
+
+on:
+  workflow_call:
+    inputs:
+      referencia:
+        description: "Imagen con su digest (registro/propietario/nombre@sha256:...)"
+        type: string
+        required: true
+      identidad:
+        description: "Identidad esperada del certificado de Sigstore: URL del workflow que firmo, con su ref"
+        type: string
+        required: true
+      emisor:
+        description: "Emisor OIDC esperado"
+        type: string
+        default: "https://token.actions.githubusercontent.com"
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Verificar firma y attestation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read # leer la firma y la attestation en GHCR
+    env:
+      COSIGN_VERSION: "2.4.1"
+      COSIGN_SHA256: "8b24b946dd5809c6bd93de08033bcf6bc0ed7d336b7785787c080f574b89249b"
+    steps:
+      - name: Instalar Cosign verificando el checksum
+        run: |
+          curl -sSfL -o cosign \
+            "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64"
+          echo "${COSIGN_SHA256}  cosign" | sha256sum -c -
+          sudo install cosign /usr/local/bin/cosign
+
+      - name: Iniciar sesion en GHCR
+        env:
+          TOKEN: ${{ github.token }}
+          USUARIO: ${{ github.actor }}
+        run: echo "${TOKEN}" | docker login ghcr.io -u "${USUARIO}" --password-stdin
+
+      # La identidad se compara exacta: quien firmo debe ser ese workflow en esa rama,
+      # no cualquier workflow del repositorio.
+      - name: Verificar la firma de la imagen
+        env:
+          REFERENCIA: ${{ inputs.referencia }}
+          IDENTIDAD: ${{ inputs.identidad }}
+          EMISOR: ${{ inputs.emisor }}
+        run: |
+          cosign verify \
+            --certificate-identity "${IDENTIDAD}" \
+            --certificate-oidc-issuer "${EMISOR}" \
+            "${REFERENCIA}"
+
+      - name: Verificar la attestation del SBOM
+        env:
+          REFERENCIA: ${{ inputs.referencia }}
+          IDENTIDAD: ${{ inputs.identidad }}
+          EMISOR: ${{ inputs.emisor }}
+        run: |
+          cosign verify-attestation \
+            --type spdxjson \
+            --certificate-identity "${IDENTIDAD}" \
+            --certificate-oidc-issuer "${EMISOR}" \
+            "${REFERENCIA}" > /dev/null
