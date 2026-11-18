@@ -1,4 +1,4 @@
-FROM jenkins/jenkins:2.452.3-lts-jdk17
+FROM jenkins/jenkins:2.541.3-lts-jdk17
 
 USER root
 RUN apt-get update \
